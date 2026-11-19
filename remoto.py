@@ -19,6 +19,7 @@ from __future__ import annotations
 import asyncio
 import contextvars
 import hashlib
+import hmac
 import json
 import os
 import sys
@@ -42,6 +43,16 @@ MAX_BYTES_ITEM = 350_000
 
 class LimiteAlcanzado(ToolError):
     """Error previsto: llega al modelo como resultado con error y el servicio sigue respondiendo."""
+
+
+_CLAVE_IP_LOCAL = os.urandom(32)
+
+
+def _clave_ip() -> bytes:
+    """Clave del resumen de IP. En Lambda es el token del INDEC (compartido entre contenedores, nunca se escribe);
+    sin token, una clave aleatoria del proceso."""
+    token = os.environ.get("INDEC_API_TOKEN", "")
+    return hashlib.sha256(b"indices-ar|ip|" + token.encode()).digest() if token else _CLAVE_IP_LOCAL
 
 
 @dataclass
@@ -236,7 +247,8 @@ class Capa:
             excedido = True
             self._bloqueado_hasta = max(self._bloqueado_hasta, (int(ahora // 86400) + 1) * 86400)
         if ip:
-            resumen = hashlib.sha256(f"{minuto}|{ip}".encode()).hexdigest()[:16]
+            # HMAC con una clave que no se guarda: sin la clave, el resumen no se revierte por fuerza bruta.
+            resumen = hmac.new(_clave_ip(), f"{minuto}|{ip}".encode(), hashlib.sha256).hexdigest()[:16]
             if await self._sumar(f"l#ip#{resumen}#{minuto}", 120) > self.limites.ip_por_minuto:
                 excedido = True
         if excedido:
