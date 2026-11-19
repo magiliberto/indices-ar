@@ -36,9 +36,20 @@ def chequear(condicion: bool, etiqueta: str, detalle: str = "") -> None:
     print(("  ok   " if condicion else "  FALLA ") + etiqueta + (f" — {detalle}" if detalle and not condicion else ""))
 
 
+LIMITE = "Límite de uso alcanzado"
+
+
 async def llamar(c: Client, herramienta: str, **argumentos):
-    await asyncio.sleep(0.15)
-    return await c.call_tool(herramienta, argumentos)
+    """Llama a la herramienta. Contra un servidor remoto, si salta el límite de uso espera y repite:
+    el recorrido completo pide más de lo que el límite deja pasar en un minuto."""
+    for _ in range(6):
+        await asyncio.sleep(0.15)
+        r = await c.call_tool(herramienta, argumentos)
+        if not (es_error(r) and texto(r).startswith(LIMITE)):
+            return r
+        print("       límite de uso alcanzado: espero 61 s y repito")
+        await asyncio.sleep(61)
+    return r
 
 
 async def main() -> None:
