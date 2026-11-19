@@ -151,6 +151,31 @@ def test_limite_global_error_legible_y_el_servicio_sigue(capa, monkeypatch):
     assert [l["estado"] for l in capa.lineas if l["evento"] == "llamada"] == ["ok", "ok", "ok", "limite", "ok"]
 
 
+def test_superado_el_limite_no_escribe_mas_en_el_backend(capa):
+    capa.limites = remoto.Limites(global_por_minuto=2)
+    sumas = []
+    original = capa.backend.sumar
+
+    async def contar(clave, ttl):
+        sumas.append(clave)
+        return await original(clave, ttl)
+
+    capa.backend.sumar = contar
+
+    async def correr():
+        for _ in range(2):
+            await capa.chequear_llamada(None)
+        for _ in range(20):
+            with pytest.raises(remoto.LimiteAlcanzado):
+                await capa.chequear_llamada(None)
+
+    capa.reloj_fake.t = 60 * 30_000_000  # principio de un minuto
+    asyncio.run(correr())
+    assert len(sumas) == 6  # 2 llamadas buenas + la que supera, dos contadores cada una
+    capa.reloj_fake.t += 60
+    asyncio.run(capa.chequear_llamada(None))  # minuto nuevo: vuelve a atender
+
+
 def test_limite_diario(capa):
     capa.limites = remoto.Limites(global_por_minuto=1000, global_por_dia=5)
 

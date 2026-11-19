@@ -177,6 +177,9 @@ class Capa:
         self.reloj = reloj
         self.registrar = registrar
         self._cabeceras_vistas: set[tuple[str, ...]] = set()
+        # Superado el límite global, este proceso rechaza sin tocar el backend hasta que cambie
+        # el minuto (o el día): un aluvión de pedidos no se convierte en un aluvión de escrituras.
+        self._bloqueado_hasta = 0.0
 
     # ------------------------------------------------------------------ caché
 
@@ -222,12 +225,16 @@ class Capa:
 
     async def chequear_llamada(self, ip: str | None) -> None:
         ahora = self.reloj()
+        if ahora < self._bloqueado_hasta:
+            raise LimiteAlcanzado(MENSAJE_LIMITE)
         minuto, dia = int(ahora // 60), time.strftime("%Y%m%d", time.gmtime(ahora))
         excedido = False
         if await self._sumar(f"l#global#m#{minuto}", 120) > self.limites.global_por_minuto:
             excedido = True
+            self._bloqueado_hasta = (minuto + 1) * 60
         if await self._sumar(f"l#global#d#{dia}", 2 * 86400) > self.limites.global_por_dia:
             excedido = True
+            self._bloqueado_hasta = max(self._bloqueado_hasta, (int(ahora // 86400) + 1) * 86400)
         if ip:
             resumen = hashlib.sha256(f"{minuto}|{ip}".encode()).hexdigest()[:16]
             if await self._sumar(f"l#ip#{resumen}#{minuto}", 120) > self.limites.ip_por_minuto:
