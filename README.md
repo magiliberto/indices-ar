@@ -28,6 +28,31 @@ Este servidor le entrega al modelo el dato junto con lo necesario para leerlo bi
 
 Todas son de solo lectura. Las cuatro primeras son del INDEC y las dos últimas del BCRA.
 
+## Usarlo sin instalar nada
+
+Lo agregás a Claude y listo: no hace falta registrarse ni instalar nada.
+
+**En Claude (web o escritorio):**
+
+1. En un chat, tocá **+** → **Plugins** → **Administrar plugins** → **Agregar** → **Agregar conector personalizado**.
+2. Nombre: `Indices AR`. Dirección: `https://indices.mauriciogiliberto.com/mcp`. Sin inicio de sesión.
+3. En cada chat donde lo quieras usar, prendelo en **+** → **Plugins**.
+
+El plan gratuito de Claude permite un conector personalizado; los pagos, varios.
+
+**En Claude Code:**
+
+```bash
+claude mcp add --transport http indices-ar https://indices.mauriciogiliberto.com/mcp
+```
+
+**Qué conviene saber:**
+
+- Si la búsqueda web está activa, para datos «de noticia» como la inflación del mes Claude a veces responde con la prensa. Si querés el dato oficial con su fuente, pedile que use Indices AR.
+- Es un servicio compartido con límite de uso. Si se pasa, la respuesta dice «Límite de uso alcanzado; probá de nuevo en un minuto». Un dato recién publicado puede tardar hasta una hora en aparecer.
+- El servidor no guarda tus preguntas.
+- Puede dejar de estar disponible sin aviso. Para uso intensivo, instalalo con tu propio token (abajo).
+
 ## Requisitos
 
 - [uv](https://docs.astral.sh/uv/) instalado. Las dependencias se resuelven solas al primer arranque.
