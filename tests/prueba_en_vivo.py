@@ -45,7 +45,7 @@ async def llamar(c: Client, herramienta: str, **argumentos):
     for _ in range(6):
         await asyncio.sleep(0.15)
         r = await c.call_tool(herramienta, argumentos)
-        if not (es_error(r) and texto(r).startswith(LIMITE)):
+        if not (es_error(r) and LIMITE in texto(r)):
             return r
         print("       límite de uso alcanzado: espero 61 s y repito")
         await asyncio.sleep(61)
