@@ -66,6 +66,24 @@ En `claude_desktop_config.json` (Configuración → Desarrollador → Editar con
 
 Claude Desktop necesita la ruta completa a `uv` (se obtiene con `which uv`). Después de guardar hay que reiniciar la aplicación.
 
+### Modo remoto (HTTP)
+
+El mismo servidor, con las mismas herramientas, puede atender por HTTP para usarlo como conector remoto:
+
+```bash
+INDEC_ENV_FILE=/ruta/a/tu/.env uv run server.py --http --puerto 8000
+# queda en http://127.0.0.1:8000/mcp
+```
+
+Usa Streamable HTTP sin estado y responde en JSON. En este modo se activan dos cosas que por stdio no corren:
+
+- **Caché** por consulta: una hora para los datos del INDEC, 15 minutos para el BCRA y seis horas para el catálogo y la lista de variables. Por defecto vive en memoria; con `INDICES_AR_CACHE=dynamodb` e `INDICES_AR_TABLA=<tabla>` se comparte en una tabla de DynamoDB (necesita `boto3`).
+- **Límite de uso:** 60 llamadas por minuto y 3000 por día en total, 30 por minuto por IP y 20 pedidos por minuto al INDEC después de la caché. Se ajustan con `INDICES_AR_LIMITE_MINUTO`, `INDICES_AR_LIMITE_DIA`, `INDICES_AR_LIMITE_IP_MINUTO` e `INDICES_AR_LIMITE_INDEC_MINUTO`. Al superarlo, la herramienta contesta «Límite de uso alcanzado; probá de nuevo en un minuto» y el servidor sigue atendiendo.
+
+Cada llamada deja una línea JSON en la salida de errores con la herramienta, el servicio o la variable, si salió de la caché, la duración y el estado. No guarda el texto de la consulta, la IP ni el token.
+
+Con `--host 127.0.0.1` (el valor por defecto) el servidor sólo acepta pedidos dirigidos a `localhost`. Detrás de un proxy o de un servicio en la nube hay que usar `--host 0.0.0.0`.
+
 ## Preguntas para probar
 
 - ¿Cuánto fue la inflación de octubre de 2026 a nivel nacional y en la Patagonia?
@@ -89,10 +107,16 @@ Conviene repetir alguna sin dar la región ni el tipo de variación, para ver qu
 
 ```bash
 # Pruebas sin red
-uv run --with 'mcp>=2.3,<3' --with httpx2 --with pytest pytest -q tests/test_unit.py
+uv run --with 'mcp>=2.3,<3' --with httpx2 --with pytest pytest -q tests/test_unit.py tests/test_remoto.py
 
 # Prueba de punta a punta contra la API real (necesita el token)
 INDEC_ENV_FILE=/ruta/a/tu/.env uv run --with 'mcp>=2.3,<3' --with httpx2 python tests/prueba_en_vivo.py
+
+# La misma prueba contra un servidor remoto (el token lo tiene el servidor)
+uv run --with 'mcp>=2.3,<3' --with httpx2 python tests/prueba_en_vivo.py --url https://tu-servidor/mcp
+
+# Sólo las herramientas del BCRA, sin token
+uv run --with 'mcp>=2.3,<3' --with httpx2 python tests/prueba_en_vivo.py --solo-bcra
 
 # Regenerar la copia local del catálogo
 uv run server.py --actualizar-catalogo
