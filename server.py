@@ -104,6 +104,7 @@ También hay variables del Banco Central (herramientas bcra_variables y bcra_ser
 8. Hay más de un tipo de cambio: el mayorista de referencia (Comunicación A 3500) y el minorista. Decí cuál usás; ninguno es la cotización del Banco Nación ni un dólar financiero.
 9. Las variables diarias no tienen dato en fines de semana ni feriados. Para un mes hay que elegir entre el último día hábil y el promedio, y decirlo.
 10. Para ajustar un precio entre dos fechas, mostrá el valor inicial, el final, sus fechas y la cuenta. Las ponderaciones de una fórmula las da quien pregunta: no las supongas.
+11. Para un insumo puntual de una fórmula de ajuste (gas oil, cemento, acero, asfalto), buscalo por su nombre con indec_buscar_valores en redeterminacion_precios_contratos_obras_publicas, columna descripcion: ese servicio publica índices de precios mayoristas a nivel de producto, que el IPIM agrupa en divisiones. Usá un rubro más amplio sólo si el producto no aparece, y decí que es un sustituto.
 """
 
 OPERADOR = re.compile(r"^(not\.)?(eq|neq|gt|gte|lt|lte|like|ilike|in|is)\.")
@@ -665,7 +666,7 @@ async def indec_buscar_valores(
     contiene: Annotated[str, Field(description="Texto a buscar, sin distinguir mayúsculas. Vacío lista todos los valores.")] = "",
     limite: Annotated[int, Field(description="Máximo de valores distintos a devolver.", ge=1, le=200)] = 50,
 ) -> str:
-    """Busca los valores distintos de una columna (por ejemplo, qué rubros del IPC contienen "carne") junto con su código o descripción, para usar el valor exacto en un filtro. Busca en el último período publicado."""
+    """Busca los valores distintos de una columna (por ejemplo, qué rubros del IPC contienen "carne") junto con su código o descripción, para usar el valor exacto en un filtro. Busca en el último período publicado. Para un insumo puntual de una fórmula de ajuste (gas oil, cemento, acero), buscá primero en redeterminacion_precios_contratos_obras_publicas, que tiene índices a nivel de producto."""
     cat = await catalogo()
     srv = cat.servicio(servicio)
     col = columna_exacta(srv, columna)
